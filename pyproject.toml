@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cke"
+version = "0.1.0"
+description = "Lightweight interpretable climate emulator (nonlocal kernels) on the ClimateBench protocol"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "M.S. Shyam Sunder"}]
+requires-python = ">=3.10"
+dependencies = [
+  "torch>=2.1",
+  "xarray>=2023.1",
+  "netCDF4>=1.6",
+  "numpy>=1.24",
+  "hydra-core>=1.3",
+  "omegaconf>=2.3",
+  "scikit-learn>=1.3",
+]
+
+[project.optional-dependencies]
+interp = ["shap>=0.44"]
+dev = ["pytest>=7.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

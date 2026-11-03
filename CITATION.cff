@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "climate-kernel-emulator: interpretable nonlocal-kernel climate emulation on ClimateBench"
+version: 0.1.0
+license: MIT
+authors:
+  - family-names: "Shyam Sunder"
+    given-names: "M.S."
+    orcid: "https://orcid.org/0000-0002-9964-6199"
+references:
+  - type: article
+    title: "ClimateBench v1.0: A Benchmark for Data-Driven Climate Projections"
+    authors:
+      - family-names: "Watson-Parris"
+        given-names: "D."
+    journal: "Journal of Advances in Modeling Earth Systems"
+    year: 2022
+    doi: "10.1029/2021MS002954"
+  - type: dataset
+    title: "ClimateBench (v1.0.0)"
+    authors:
+      - family-names: "Watson-Parris"
+        given-names: "D."
+    doi: "10.5281/zenodo.7064308"
