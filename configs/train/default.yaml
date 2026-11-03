@@ -1,0 +1,4 @@
+epochs: 50
+batch_size: 16                    # years per batch
+lr: 1.0e-3
+weight_decay: 1.0e-5
