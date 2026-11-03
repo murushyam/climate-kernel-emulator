@@ -1,0 +1,8 @@
+root: data/climatebench           # where scripts/download_climatebench.py extracts files
+variables: [tas, pr]
+train_scenarios: [historical, ssp126, ssp370, ssp585, hist-GHG, hist-aer]
+test_scenarios: [ssp245]
+coarsen: 2                        # integer lat/lon coarsening factor (1 = native 96x144); 2 -> 48x72
+aerosol_eofs: 0                   # 0 = use raw SO2/BC maps (coarsened); >0 = global EOF-reduced features
+pr_scale: 86400.0                 # kg m-2 s-1 -> mm/day
+normalise: true

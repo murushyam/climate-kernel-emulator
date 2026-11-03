@@ -1,0 +1,2 @@
+name: pattern_scaling
+driver: co2_ch4                   # regress global-mean T on [cumulative CO2, CH4] then local on global T

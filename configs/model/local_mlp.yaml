@@ -1,0 +1,4 @@
+name: local_mlp
+hidden: [32, 32]                  # small: fits easily on a 2 GB GPU
+activation: relu
+dropout: 0.0

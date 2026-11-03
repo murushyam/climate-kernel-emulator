@@ -1,0 +1,9 @@
+defaults:
+  - data: climatebench
+  - model: local_mlp
+  - train: default
+  - _self_
+
+seed: 42
+device: auto          # auto | cpu | cuda
+output_dir: outputs/${model.name}
