@@ -2,8 +2,20 @@ defaults:
   - data: climatebench
   - model: local_mlp
   - train: default
+  - temporal: timestral        # Layer 3 (CPU, stub; enabled: false)
+  - residual: diffusion        # Layer 4 (optional; enabled: false)
+  - whatif: placeholder        # Layer 5 (future; enabled: false)
   - _self_
 
 seed: 42
 device: auto          # auto | cpu | cuda
 output_dir: outputs/${model.name}
+
+eval:
+  window: [2080, 2100]        # ClimateBench scoring window (inclusive); null = all years
+
+timeseries:                   # Step 1 aggregate series for the temporal module
+  out_dir: data/timeseries
+  format: csv                 # csv | netcdf
+  lat_bands: [[-90, -30], [-30, 30], [30, 90], [60, 90]]
+  land_mask: null             # NetCDF land fraction (0..1) on the same grid; null = skip land/ocean

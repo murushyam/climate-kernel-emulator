@@ -1,0 +1,7 @@
+# Layer 4 (optional, IPSL-AID inspired): small residual diffusion on kernel-model errors.
+# Enable only if structured residual error remains after Step 2-3.
+enabled: false
+name: residual_diffusion
+channels: 16
+steps: 50
+max_params: 2.0e6     # stay well inside a 2 GB GPU

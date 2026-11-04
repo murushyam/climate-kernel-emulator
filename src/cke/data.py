@@ -75,7 +75,7 @@ class Normaliser:
 
 def stack_scenarios(root, scenarios, variables=("tas", "pr"), coarsen=1, pr_scale=86400.0):
     """Return dict of numpy arrays concatenated over scenarios along time, plus lat/lon."""
-    X_g, X_m, Y = [], [], {v: [] for v in variables}
+    X_g, X_m, Y, yrs, scen = [], [], {v: [] for v in variables}, [], []
     lat = lon = None
     for s in scenarios:
         xi = load_inputs(root, s, coarsen)
@@ -86,12 +86,42 @@ def stack_scenarios(root, scenarios, variables=("tas", "pr"), coarsen=1, pr_scal
         for v in variables:
             Y[v].append(yo[v].values[:n])
         lat, lon = yo["latitude"].values, yo["longitude"].values
+        yrs.append(_years(yo, n))
+        scen += [s] * n
     return {
         "global": np.concatenate(X_g).astype(np.float32),      # (T, 2)
         "maps": np.nan_to_num(np.concatenate(X_m)).astype(np.float32),  # (T, 2, H, W)
         "targets": {v: np.concatenate(Y[v]).astype(np.float32) for v in variables},  # (T, H, W)
         "lat": lat, "lon": lon,
+        "years": np.concatenate(yrs).astype(int),            # (T,)
+        "scenario": np.array(scen),                          # (T,)
     }
+
+
+def _years(ds: xr.Dataset, n: int) -> np.ndarray:
+    t = ds["time"].values[:n]
+    if np.issubdtype(t.dtype, np.datetime64):
+        return t.astype("datetime64[Y]").astype(int) + 1970
+    if t.dtype == object:  # cftime
+        return np.array([x.year for x in t])
+    return np.asarray(t).astype(int)
+
+
+def select_years(split: dict, start: int | None, end: int | None) -> dict:
+    """Restrict a stacked split to start <= year <= end (inclusive). None = open bound."""
+    y = split["years"]
+    m = np.ones_like(y, dtype=bool)
+    if start is not None:
+        m &= y >= start
+    if end is not None:
+        m &= y <= end
+    if not m.any():
+        raise ValueError(f"no years in window [{start}, {end}]; available {y.min()}-{y.max()}")
+    out = dict(split)
+    out["global"], out["maps"] = split["global"][m], split["maps"][m]
+    out["targets"] = {k: v[m] for k, v in split["targets"].items()}
+    out["years"], out["scenario"] = y[m], split["scenario"][m]
+    return out
 
 
 class ClimateBenchDataset(Dataset):

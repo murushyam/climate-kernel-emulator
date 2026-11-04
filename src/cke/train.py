@@ -10,7 +10,7 @@ import torch
 from omegaconf import DictConfig
 
 from cke.baselines import LocalMLP, PatternScaling
-from cke.data import ClimateBenchDataset, Normaliser, stack_scenarios
+from cke.data import ClimateBenchDataset, Normaliser, select_years, stack_scenarios
 from cke.metrics import all_metrics, global_mean
 from cke.utils.seed import seed_everything
 
@@ -26,7 +26,12 @@ def _device(name):
 def load_splits(cfg):
     d = cfg.data
     kw = dict(variables=list(d.variables), coarsen=d.coarsen, pr_scale=d.pr_scale)
-    return stack_scenarios(d.root, d.train_scenarios, **kw), stack_scenarios(d.root, d.test_scenarios, **kw)
+    tr = stack_scenarios(d.root, d.train_scenarios, **kw)
+    te = stack_scenarios(d.root, d.test_scenarios, **kw)
+    w = cfg.get("eval", {}).get("window", None)
+    if w is not None:  # ClimateBench protocol: score held-out scenario on 2080-2100 only
+        te = select_years(te, w[0], w[1])
+    return tr, te
 
 
 def run_pattern_scaling(cfg, tr, te):

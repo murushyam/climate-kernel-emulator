@@ -1,0 +1,4 @@
+# Layer 5 (future, not for paper 1): action-conditioned what-if (Earth System World Model inspired).
+enabled: false
+name: whatif
+actions: []           # e.g. {type: forcing_scale, var: SO2, factor: 0.5, region: south_asia}

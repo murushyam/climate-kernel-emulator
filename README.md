@@ -4,19 +4,23 @@ A lightweight, interpretable emulator of the **global forced climate response**:
 
 Author: M.S. Shyam Sunder ([ORCID 0000-0002-9964-6199](https://orcid.org/0000-0002-9964-6199)). MIT licence.
 
-## Three pieces
-1. **Interpretable nonlocal kernels** (after Ferretti et al., QJRMS): parametric integration kernels gather spatial context and short temporal context, then feed a small local nonlinear predictor. This is the core scientific contribution.
-2. **Fidelity verification** (after Suri & Sonnewald): SHAP/LRP plus regime and mechanistic checks, to show the model uses real physical drivers rather than shortcuts, including on held-out future scenarios.
-3. **Optional probabilistic residual** (inspired by IPSL-AID): a small residual diffusion or ensemble stage, added only where the kernel model leaves structured error.
+## Architecture (priority order)
+1. **Interpretable nonlocal kernels** (after Ferretti et al.): parametric integration kernels aggregate spatial (and short temporal) context into a small local nonlinear predictor. Core contribution.
+2. **Fidelity verification** (after Suri & Sonnewald): SHAP/LRP plus mechanistic-regime checks, in-distribution and on held-out scenarios.
+3. **Temporal / probabilistic module**: small Timestral checkpoints (5M / 28M, CPU) on global-mean and regional series, forcings as known-future covariates, quantile forecasts. *Stub.*
+4. **Optional residual diffusion** (IPSL-AID inspired): only if structured residual error remains. *Stub, disabled.*
+5. **Action-conditioned what-if** (Earth System World Model inspired): future work, not paper 1. *Placeholder.*
 
-## Plan and status
+Full plan and status: [`docs/PLAN.md`](docs/PLAN.md).
+
+## Status
 | Step | Content | Status |
 |---|---|---|
-| 1 | Data pipeline, plus pattern-scaling and local-MLP baselines, NRMSE metrics, configs, tests and CI | **In progress** (skeleton done; real-data baseline runs pending) |
-| 2 | Kernel layer: parametric nonlocal kernels plus a local predictor | Planned |
-| 3 | Experimental hierarchy, ClimateBench NRMSE and physical diagnostics | Planned |
-| 4 | Kernel visualisation, fidelity checks (in and out of distribution), optional residual stage | Planned |
-| 5 | Paper (JAMES / GMD / QJRMS / EDS) and reproducibility release | Planned |
+| 1 | Data, pattern-scaling + local-MLP baselines, Hydra, seeds, tests, CI, aggregate time series | Code done; real-data baseline runs pending |
+| 2 | Kernel layer + local predictor | Next |
+| 3 | NRMSE on held-out ssp245 (2080–2100), physical diagnostics, Timestral comparison | Metrics done; Timestral stub |
+| 4 | Kernel visualisation, fidelity checks, optional residual | Planned |
+| 5 | Paper, reproducibility note, what-if section, profile update | Planned |
 
 ## Hardware constraints
 Everything must run on a **2 GB GPU with 32 GB RAM**, or on CPU:
@@ -44,16 +48,21 @@ python -m cke.train model=pattern_scaling
 python -m cke.train model=local_mlp data.coarsen=2 train.epochs=50
 python -m cke.train model=local_mlp seed=1 device=cpu
 python -m cke.evaluate outputs/*/metrics.json
+python -m cke.timeseries                          # -> data/timeseries/aggregate_series.csv
+python -m cke.timeseries timeseries.format=netcdf timeseries.land_mask=path/to/landfrac.nc
 ```
 - Train scenarios: historical, ssp126, ssp370, ssp585, hist-GHG, hist-aer.
 - Test scenario: ssp245.
+- Scoring window: 2080–2100 (`eval.window`; set `eval.window=null` for all years).
 - Metrics (latitude-weighted): NRMSE spatial, NRMSE global, and NRMSE total = spatial + 5 × global.
 
 ## Layout
 ```
-configs/            Hydra: config.yaml, data/, model/, train/
+configs/            Hydra: config.yaml, data/, model/, train/, temporal/, residual/, whatif/
+docs/PLAN.md        definitive plan
 scripts/            download_climatebench.py
-src/cke/            data.py, metrics.py, train.py, evaluate.py, baselines/, utils/seed.py
+src/cke/            data.py, metrics.py, train.py, evaluate.py, timeseries.py, baselines/, utils/,
+                    temporal/ (stub), residual_diffusion/ (stub), whatif/ (placeholder)
 tests/              synthetic-data tests
 ```
 

@@ -1,0 +1,12 @@
+# Layer 3: time-series foundation model on global-mean / regional aggregate series. CPU only.
+# Verified 2026-11-04: package `timestral` (pip install git+https://github.com/mistralai/timestral.git,
+# Apache-2.0 code, torch>=2.4); weights on HF Hub mistralai/Timestral-5M | -28M | -123M | -209M (Modified MIT).
+enabled: false
+name: timestral
+checkpoint: mistralai/Timestral-5M     # or mistralai/Timestral-28M; keep <=28M (CPU budget)
+device: cpu
+context_scenarios: [historical]
+target_series: [global_tas, global_pr]
+covariates: [CO2, CH4, SO2_global, BC_global]   # known-future covariates
+prediction_length: 86                  # 2015-2100
+quantiles: [0.05, 0.1, 0.5, 0.9, 0.95]
