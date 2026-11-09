@@ -22,3 +22,55 @@ references:
       - family-names: "Watson-Parris"
         given-names: "D."
     doi: "10.5281/zenodo.7064308"
+  - type: article
+    title: "Data-Driven Integration Kernels for Interpretable Nonlocal Operator Learning"
+    authors:
+      - family-names: "Ferretti"
+        given-names: "S. L."
+      - family-names: "Lin"
+        given-names: "J."
+      - family-names: "Shamekh"
+        given-names: "S."
+      - family-names: "Baldwin"
+        given-names: "J. W."
+      - family-names: "Pritchard"
+        given-names: "M. S."
+      - family-names: "Beucler"
+        given-names: "T."
+    journal: "Environmental Data Science"
+    year: 2026
+    doi: "10.1017/eds.2026.10056"
+  - type: article
+    title: "Trusting Machine Learning With Physics: A Fidelity Verification Framework for Complex Systems"
+    authors:
+      - family-names: "Suri"
+        given-names: "S."
+      - family-names: "Sonnewald"
+        given-names: "M."
+    journal: "Journal of Geophysical Research: Machine Learning and Computation"
+    year: 2026
+    doi: "10.1029/2025JH001211"
+  - type: article
+    title: "Timestral: Time Series Foundation Models with Decoupled Horizon Forecasting"
+    authors:
+      - family-names: "Petralia"
+        given-names: "A."
+    journal: "arXiv preprint arXiv:2610.37585"
+    year: 2026
+    doi: "10.48550/arXiv.2610.37585"
+  - type: article
+    title: "IPSL-AID: Generative Diffusion Models for Climate Downscaling from Global to Regional Scales"
+    authors:
+      - family-names: "Kingston"
+        given-names: "K."
+    journal: "arXiv preprint arXiv:2604.03275"
+    year: 2026
+    doi: "10.48550/arXiv.2604.03275"
+  - type: article
+    title: "Earth System World Model for What-If Simulations: A Case Study for Terrestrial Ecosystems"
+    authors:
+      - family-names: "Wang"
+        given-names: "Z."
+    journal: "arXiv preprint arXiv:2609.08855"
+    year: 2026
+    doi: "10.48550/arXiv.2609.08855"

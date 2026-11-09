@@ -118,6 +118,9 @@ def select_years(split: dict, start: int | None, end: int | None) -> dict:
     if not m.any():
         raise ValueError(f"no years in window [{start}, {end}]; available {y.min()}-{y.max()}")
     out = dict(split)
+    out["_full_global"] = split["global"]
+    out["_full_scenario"] = split["scenario"]
+    out["_window_mask"] = m
     out["global"], out["maps"] = split["global"][m], split["maps"][m]
     out["targets"] = {k: v[m] for k, v in split["targets"].items()}
     out["years"], out["scenario"] = y[m], split["scenario"][m]

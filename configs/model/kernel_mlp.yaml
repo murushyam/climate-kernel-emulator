@@ -1,0 +1,12 @@
+name: kernel_mlp
+family: gaussian                  # gaussian | mog | tophat | exponential
+n_spatial_kernels: 4              # K nonlocal kernels per spatial map channel (SO2, BC)
+anisotropic: true                 # separate lat/lon scales + upwind advection center shifts
+n_components: 2                   # used when family == mog
+n_temporal_kernels: 2             # M exponential memory kernels on global CO2/CH4
+temporal_window: 10               # causal lookback window L (years)
+include_local_maps: true
+coord_features: true              # append [sin(lat), cos(lat), sin(lon), cos(lon)]
+hidden: [32, 32]
+dropout: 0.0
+
