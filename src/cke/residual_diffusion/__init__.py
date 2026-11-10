@@ -1,6 +1,16 @@
-"""Layer 4 (optional): Lightweight corrective residual diffusion (IPSL-AID / CorrDiff inspired).
+"""Layer 4: residual operator-diffusion correction on top of the kernel prior.
+
+The interpretable kernel model (Layer 1) supplies the coarse prior y_kernel. A small
+residual-conditioned model learns only the residual Delta = y_true - y_kernel, and the
+final output is y_kernel + Delta_hat (residual operator-diffusion idea, Park et al., 2026,
+npj Artificial Intelligence). Two stages, in order:
+
+1. ``ResidualHead``: deterministic lightweight residual CNN (default, ``mode: head``).
+2. ``ResidualDenoiser``: tiny residual diffusion (``mode: diffusion``), used only if the
+   residual left after stage 1 is still large and spatially structured.
 
 References:
+- Park et al. (2026), residual operator-diffusion, npj Artificial Intelligence.
 - Kingston et al. (2026), "IPSL-AID: Generative Diffusion Models for Climate Downscaling
   from Global to Regional Scales", arXiv:2604.03275, doi:10.48550/arXiv.2604.03275.
 - Mardani et al. (2024), "Residual Corrective Diffusion Modeling for Km-Scale Atmospheric
@@ -39,6 +49,71 @@ class ResidualDenoiser(nn.Module):
         h = F.silu(self.conv_in(x))
         h = h + F.silu(self.conv_mid(h))
         return self.conv_out(h)
+
+
+def _cfg_get(cfg, key, default):
+    if cfg is None:
+        return default
+    return cfg.get(key, default) if hasattr(cfg, "get") else getattr(cfg, key, default)
+
+
+class ResidualHead(nn.Module):
+    """Deterministic residual corrector: Delta_hat = f(kernel prediction, forcings)."""
+
+    def __init__(self, target_channels: int, cond_channels: int, hidden_channels: int = 16):
+        super().__init__()
+        self.target_channels = int(target_channels)
+        self.cond_channels = int(cond_channels)
+        self.hidden_channels = int(hidden_channels)
+        self.conv_in = nn.Conv2d(cond_channels, hidden_channels, 3, padding=1, padding_mode="circular")
+        self.conv_mid = nn.Conv2d(hidden_channels, hidden_channels, 3, padding=1, padding_mode="circular")
+        self.conv_out = nn.Conv2d(hidden_channels, target_channels, 1)
+        nn.init.zeros_(self.conv_out.weight)  # start as the identity correction (Delta_hat = 0)
+        nn.init.zeros_(self.conv_out.bias)
+
+    def forward(self, cond: torch.Tensor) -> torch.Tensor:
+        h = F.silu(self.conv_in(cond))
+        h = h + F.silu(self.conv_mid(h))
+        return self.conv_out(h)
+
+
+def fit_residual_head(
+    residuals: np.ndarray | torch.Tensor | None = None,
+    cond: np.ndarray | torch.Tensor | None = None,
+    cfg=None,
+    epochs: int = 200,
+    lr: float = 1e-2,
+    weight_decay: float = 1e-4,
+    device: str = "cpu",
+) -> ResidualHead:
+    """Fit the deterministic residual head on Delta = y_true - y_kernel (training scenarios only)."""
+    if residuals is None or cond is None or cfg is None or not _cfg_get(cfg, "enabled", False):
+        raise NotImplementedError("Residual correction is disabled (set residual.enabled=true)")
+    r_t = torch.as_tensor(residuals, dtype=torch.float32, device=device)
+    c_t = torch.as_tensor(cond, dtype=torch.float32, device=device)
+    model = ResidualHead(r_t.shape[1], c_t.shape[1], int(_cfg_get(cfg, "channels", 16))).to(device)
+    if sum(p.numel() for p in model.parameters()) > float(_cfg_get(cfg, "max_params", 2.0e6)):
+        raise ValueError("ResidualHead exceeds configured max_params budget")
+    opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    model.train()
+    for _ in range(epochs):
+        loss = F.mse_loss(model(c_t), r_t)
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+    model.eval()
+    return model
+
+
+@torch.no_grad()
+def apply_residual_correction(y_kernel: np.ndarray, model: nn.Module, cond, steps: int = 25, seed: int = 42) -> np.ndarray:
+    """Final output = kernel prediction + residual correction (head or diffusion sample)."""
+    if isinstance(model, ResidualHead):
+        dev = next(model.parameters()).device
+        delta = model(torch.as_tensor(cond, dtype=torch.float32, device=dev)).cpu().numpy()
+    else:
+        delta = sample_residual(model, cond, steps=steps, seed=seed)
+    return np.asarray(y_kernel, dtype=np.float32) + delta
 
 
 def cosine_alpha_bar(steps: int, device=None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
