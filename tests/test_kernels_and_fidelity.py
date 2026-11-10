@@ -271,3 +271,21 @@ def test_kernel_checkpoint_round_trip_restores_anchor_and_stats(tmp_path):
     assert torch.allclose(ref, out, atol=1e-6)
     summary = fresh.export_kernel_summary()
     assert summary["anchor_coefficients"] == 2 * H * W * (1 + 2)
+
+
+def test_residual_head_kernel_plus_delta():
+    from cke.residual_diffusion import ResidualHead, apply_residual_correction, fit_residual_head
+    rng = np.random.default_rng(3)
+    cond = rng.normal(0, 1.0, size=(8, 3, 8, 12)).astype(np.float32)
+    delta = (0.5 * cond[:, :2]).astype(np.float32)  # learnable structured residual
+    y_kernel = rng.normal(0, 1.0, size=(8, 2, 8, 12)).astype(np.float32)
+    cfg = {"enabled": True, "mode": "head", "channels": 8, "max_params": 50000}
+    head = fit_residual_head(delta, cond, cfg=cfg, epochs=150)
+    assert isinstance(head, ResidualHead)
+    zero = ResidualHead(2, 3, 8)
+    assert np.allclose(apply_residual_correction(y_kernel, zero, cond), y_kernel)  # starts as identity
+    y_final = apply_residual_correction(y_kernel, head, cond)
+    y_true = y_kernel + delta
+    assert np.mean((y_final - y_true) ** 2) < 0.5 * np.mean(delta ** 2)
+    with pytest.raises(NotImplementedError):
+        fit_residual_head(delta, cond, cfg={"enabled": False})

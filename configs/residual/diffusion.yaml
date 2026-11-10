@@ -1,7 +1,10 @@
-# Layer 4 (optional, IPSL-AID inspired): small residual diffusion on kernel-model errors.
-# Enable only if structured residual error remains after Step 2-3.
+# Layer 4: residual operator-diffusion correction (Park et al., 2026, npj AI).
+# Kernel model = interpretable prior; this layer learns only Delta = y_true - y_kernel.
+# mode: head (lightweight residual CNN, try first) | diffusion (tiny residual diffusion,
+# only if the residual left after the head is still large and structured).
 enabled: false
-name: residual_diffusion
+name: residual_operator_diffusion
+mode: head
 channels: 16
-steps: 50
+steps: 50             # diffusion mode only
 max_params: 2.0e6     # stay well inside a 2 GB GPU
