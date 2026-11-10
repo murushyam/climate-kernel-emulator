@@ -4,7 +4,7 @@ Produces 5 figures and a complete JSON/Markdown outcomes summary:
   1. fig1_nrmse_ablation.png: ClimateBench NRMSE_s, NRMSE_g, NRMSE_t across baselines & 4 kernel families
   2. fig2_spatial_maps_ssp245.png: Held-out SSP245 (2080-2100) truth, predictions, and spatial bias maps
   3. fig3_learned_kernel_footprints.png: Learned spatial footprints (Ferretti et al., 2026) & temporal memory decay
-  4. fig4_suri_sonnewald_fidelity.png: SHAP vs. LRP-epsilon attributions across 4 mechanistic regimes (Suri & Sonnewald, 2026)
+  4. fig4_suri_sonnewald_fidelity.png: Integrated-gradients vs. LRP-epsilon attributions of the local predictor across 4 mechanistic regimes (Suri & Sonnewald, 2026)
   5. fig5_whatif_and_trajectories.png: Global-mean trajectories (with quantile fan) & Asian SO2 clean-air what-if counterfactual
 """
 from __future__ import annotations
@@ -168,6 +168,8 @@ def main():
     ap.add_argument("--out-dir", default="outputs/benchmark_suite")
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--coarsen", type=int, default=2)
+    ap.add_argument("--allow-surrogate", action="store_true",
+                    help="If real ClimateBench data is missing, fall back to a synthetic surrogate (smoke test only; results are not ClimateBench scores).")
     args = ap.parse_args()
 
     seed_everything(42)
@@ -180,7 +182,14 @@ def main():
         data_root = real_root
         coarsen = args.coarsen
         data_source = f"ClimateBench v1.0.0 ({real_root})"
+    elif not args.allow_surrogate:
+        raise SystemExit(
+            f"[cke] Real ClimateBench data not found under {args.data_root!r}. "
+            "Download it with scripts/download_climatebench.py, or pass --allow-surrogate "
+            "to run a synthetic smoke test (its outputs are NOT ClimateBench scores)."
+        )
     else:
+        print("[cke] WARNING: real ClimateBench data not found; using a SYNTHETIC surrogate. Results are not ClimateBench scores.")
         data_root = out_dir / "surrogate_climatebench"
         generate_physically_structured_surrogate(data_root, H=24, W=36)
         coarsen = 1
@@ -454,7 +463,7 @@ def main():
         l_grp = [float(l_full[sl].sum()) for sl in group_slices]
 
         y_pos = np.arange(len(group_names))
-        ax.barh(y_pos - 0.18, s_grp, height=0.35, color="#2b5c8f", label="SHAP (IG)")
+        ax.barh(y_pos - 0.18, s_grp, height=0.35, color="#2b5c8f", label="Integrated Gradients")
         ax.barh(y_pos + 0.18, l_grp, height=0.35, color="#e7298a", label="LRP-$\\varepsilon$")
         ax.set_yticks(y_pos)
         ax.set_yticklabels(group_names)
@@ -495,7 +504,7 @@ def main():
     axes[0].plot(yrs, tas_full_true, "k-", lw=2.2, label="Truth (SSP245)")
     axes[0].plot(yrs, tas_full_lmlp, "--", color="#e41a1c", lw=1.8, label="LocalMLP")
     axes[0].plot(yrs, tas_full_kern, "-", color="#1b9e77", lw=2.0, label="Kernel-Gaussian")
-    axes[0].fill_between(yrs, tas_full_kern - 0.06, tas_full_kern + 0.06, color="#1b9e77", alpha=0.22, label="90% Predictive Band")
+    # NOTE: no predictive uncertainty is estimated yet, so no band is drawn (a fixed +/-0.06 K band was removed).
     axes[0].axvspan(2080, 2100, color="gold", alpha=0.2, label="Scoring Window (2080–2100)")
     axes[0].set_title("Global-Mean tas Trajectory (SSP245)")
     axes[0].set_xlabel("Year")

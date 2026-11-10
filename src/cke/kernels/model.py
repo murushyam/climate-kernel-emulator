@@ -87,8 +87,8 @@ class KernelEmulator(nn.Module):
             hidden=tuple(hidden),
             dropout=dropout,
         )
-        self.register_buffer("anchor_a", torch.zeros(1, out_channels, self.H, self.W), persistent=False)
-        self.register_buffer("anchor_b", torch.zeros(1, out_channels, n_global, self.H, self.W), persistent=False)
+        self.register_buffer("anchor_a", torch.zeros(1, out_channels, self.H, self.W), persistent=True)
+        self.register_buffer("anchor_b", torch.zeros(1, out_channels, n_global, self.H, self.W), persistent=True)
         self.has_anchor = False
 
     @torch.no_grad()
@@ -163,5 +163,33 @@ class KernelEmulator(nn.Module):
         out = {"spatial": self.spatial_kernels.export_parameters()}
         if self.temporal_kernels is not None:
             out["temporal"] = self.temporal_kernels.export_parameters()
-        out["total_parameters"] = sum(p.numel() for p in self.parameters())
+        trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        anchor = int(self.anchor_a.numel() + self.anchor_b.numel()) if self.has_anchor else 0
+        out["trainable_parameters"] = trainable
+        out["anchor_coefficients"] = anchor
+        out["total_parameters"] = trainable + anchor
         return out
+
+
+def save_checkpoint(model: "KernelEmulator", path) -> None:
+    """Save everything needed to restore a fitted KernelEmulator.
+
+    Includes the network weights, the fitted closed-form anchor buffers (in the state dict),
+    whether the anchor is active, and the input normalisation statistics.
+    """
+    stats = getattr(model, "input_stats", None)
+    if stats is not None:
+        stats = {k: (torch.as_tensor(np.asarray(v)) if not isinstance(v, torch.Tensor) else v.detach().cpu())
+                 for k, v in stats.items()}
+    torch.save({"state_dict": model.state_dict(), "has_anchor": bool(model.has_anchor),
+                "input_stats": stats}, path)
+
+
+def load_checkpoint(model: "KernelEmulator", path, map_location="cpu") -> "KernelEmulator":
+    """Restore a checkpoint written by `save_checkpoint` into an identically configured model."""
+    ckpt = torch.load(path, map_location=map_location, weights_only=False)
+    model.load_state_dict(ckpt["state_dict"])
+    model.has_anchor = bool(ckpt["has_anchor"])
+    if ckpt.get("input_stats") is not None:
+        model.input_stats = {k: v.numpy() for k, v in ckpt["input_stats"].items()}
+    return model
