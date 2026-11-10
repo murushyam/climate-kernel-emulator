@@ -11,7 +11,7 @@ from omegaconf import DictConfig
 
 from cke.baselines import LocalMLP, PatternScaling
 from cke.data import ClimateBenchDataset, Normaliser, select_years, stack_scenarios
-from cke.kernels import KernelEmulator, build_temporal_history
+from cke.kernels import KernelEmulator, build_temporal_history, save_checkpoint
 from cke.metrics import all_metrics, global_mean, lat_weights
 from cke.utils.seed import seed_everything
 
@@ -168,7 +168,7 @@ def main(cfg: DictConfig):
         torch.save(model.state_dict(), out / "model.pt")
     elif cfg.model.name == "kernel_mlp":
         res, _, model = run_kernel_mlp(cfg, tr, te)
-        torch.save(model.state_dict(), out / "model.pt")
+        save_checkpoint(model, out / "model.pt")
         (out / "kernels.json").write_text(json.dumps(model.export_kernel_summary(), indent=2))
     else:
         raise ValueError(cfg.model.name)

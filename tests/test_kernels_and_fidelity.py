@@ -25,6 +25,8 @@ from cke.interp import (
 )
 from cke.kernels import (
     KernelEmulator,
+    load_checkpoint,
+    save_checkpoint,
     SpatialKernelLayer,
     TemporalExponentialKernel,
     build_temporal_history,
@@ -99,7 +101,8 @@ def test_kernel_emulator_forward_and_parameter_budget():
     y_hat = model(ds.x, g_hist=g_hist)
     assert y_hat.shape == (T, 2, H, W)
     summary = model.export_kernel_summary()
-    assert summary["total_parameters"] < 5000
+    assert summary["trainable_parameters"] < 5000
+    assert summary["total_parameters"] == summary["trainable_parameters"] + summary["anchor_coefficients"]
 
 
 def test_run_kernel_mlp_end_to_end(tmp_path):
@@ -236,3 +239,35 @@ def test_residual_diffusion_and_whatif_enabled():
     assert np.allclose(perturbed["global"][:, 0], 50.0)
     assert perturbed["maps"][:, 0].min() == 0.0 and perturbed["maps"][:, 0].max() == 2.0
 
+
+
+def test_kernel_checkpoint_round_trip_restores_anchor_and_stats(tmp_path):
+    T, H, W = 5, 8, 12
+    lat = np.linspace(-85.0, 85.0, H)
+    lon = np.linspace(0.0, 330.0, W)
+    kw = dict(n_global=2, n_maps=2, out_channels=2, lat=lat, lon=lon, n_spatial_kernels=3,
+              family="gaussian", n_temporal_kernels=2, temporal_window=4, hidden=(16, 16))
+    torch.manual_seed(0)
+    model = KernelEmulator(**kw)
+    g = np.random.rand(T, 2).astype(np.float32)
+    y = np.random.rand(T, 2, H, W).astype(np.float32)
+    model.fit_spatial_anchor(g, y)
+    model.input_stats = {"g_mean": np.ones(2, dtype=np.float32), "g_std": np.full(2, 2.0, dtype=np.float32)}
+    model.eval()
+    ds = ClimateBenchDataset(g, np.random.rand(T, 2, H, W), y)
+    g_hist = torch.rand(T, 2, 4)
+    with torch.no_grad():
+        ref = model(ds.x, g_hist=g_hist)
+    save_checkpoint(model, tmp_path / "model.pt")
+
+    torch.manual_seed(123)
+    fresh = KernelEmulator(**kw)
+    load_checkpoint(fresh, tmp_path / "model.pt")
+    fresh.eval()
+    assert fresh.has_anchor
+    assert np.allclose(fresh.input_stats["g_std"], 2.0)
+    with torch.no_grad():
+        out = fresh(ds.x, g_hist=g_hist)
+    assert torch.allclose(ref, out, atol=1e-6)
+    summary = fresh.export_kernel_summary()
+    assert summary["anchor_coefficients"] == 2 * H * W * (1 + 2)
